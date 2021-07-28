@@ -181,6 +181,7 @@ func (s *indexHandler) resume(fset *db.FileSet, runner service) {
 	s.paused = false
 	s.fset = fset
 	s.runner = runner
+	s.cond.Broadcast()
 	s.cond.L.Unlock()
 }
 
@@ -192,6 +193,7 @@ func (s *indexHandler) pause() {
 	s.paused = true
 	s.fset = nil
 	s.runner = nil
+	s.cond.Broadcast()
 	s.cond.L.Unlock()
 }
 
