@@ -111,10 +111,10 @@ func newIndexHandler(conn protocol.Connection, downloads *deviceDownloadState, f
 	}
 }
 
-// waitCondWithContext waits for cond to signal, or for the context to finish.
+// waitCondLockedWithCtx waits for cond to signal, or for the context to finish.
 // If the context is cancelled, the cond will broadcast and an error will be returned.
 // cond must be locked when calling this function.
-func waitCondWithContext(cond *sync.Cond, ctx context.Context) error {
+func waitCondLockedWithCtx(cond *sync.Cond, ctx context.Context) error {
 	c := make(chan struct{}, 1)
 	go func() {
 		cond.Wait()
@@ -138,7 +138,7 @@ func (s *indexHandler) waitForResumedFileset(ctx context.Context) (*db.FileSet, 
 	defer s.cond.L.Unlock()
 
 	for s.paused {
-		if err := waitCondWithContext(s.cond, ctx); err != nil {
+		if err := waitCondLockedWithCtx(s.cond, ctx); err != nil {
 			return nil, err
 		}
 	}
