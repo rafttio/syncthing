@@ -111,6 +111,42 @@ func newIndexHandler(conn protocol.Connection, downloads *deviceDownloadState, f
 	}
 }
 
+// waitCondWithContext waits for cond to signal, or for the context to finish.
+// If the context is cancelled, the cond will broadcast and an error will be returned.
+// cond must be locked when calling this function.
+func waitCondWithContext(cond *sync.Cond, ctx context.Context) error {
+	c := make(chan struct{}, 1)
+	go func() {
+		cond.Wait()
+		close(c)
+	}()
+
+	select {
+	case <-c:
+	case <-ctx.Done():
+		cond.Broadcast()
+		// wait for goroutine to close so we don't race re-locking the cond
+		<-c
+	}
+	return ctx.Err()
+}
+
+// waitForResumedFileset waits for the handler to be unpaused and fetches the current fileset.
+// Returns an error if the context is cancelled.
+func (s *indexHandler) waitForResumedFileset(ctx context.Context) (*db.FileSet, error) {
+	s.cond.L.Lock()
+	defer s.cond.L.Unlock()
+
+	for s.paused {
+		if err := waitCondWithContext(s.cond, ctx); err != nil {
+			return nil, err
+		}
+	}
+	fset := s.fset
+
+	return fset, nil
+}
+
 func (s *indexHandler) Serve(ctx context.Context) (err error) {
 	l.Debugf("Starting index handler for %s to %s at %s (slv=%d)", s.folder, s.conn.ID(), s.conn, s.prevSequence)
 	defer func() {
@@ -119,12 +155,10 @@ func (s *indexHandler) Serve(ctx context.Context) (err error) {
 	}()
 
 	// We need to send one index, regardless of whether there is something to send or not
-	s.cond.L.Lock()
-	for s.paused {
-		s.cond.Wait()
+	fset, err := s.waitForResumedFileset(ctx)
+	if err != nil {
+		return err
 	}
-	fset := s.fset
-	s.cond.L.Unlock()
 	err = s.sendIndexTo(ctx, fset)
 
 	// Subscribe to LocalIndexUpdated (we have new information to send) and
@@ -138,12 +172,10 @@ func (s *indexHandler) Serve(ctx context.Context) (err error) {
 	defer ticker.Stop()
 
 	for err == nil {
-		s.cond.L.Lock()
-		for s.paused {
-			s.cond.Wait()
+		fset, err = s.waitForResumedFileset(ctx)
+		if err != nil {
+			break
 		}
-		fset := s.fset
-		s.cond.L.Unlock()
 
 		// While we have sent a sequence at least equal to the one
 		// currently in the database, wait for the local index to update. The
