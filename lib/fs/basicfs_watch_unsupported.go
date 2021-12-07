@@ -9,8 +9,9 @@
 
 package fs
 
-import "context"
-
+// want this to be a compile time error
+/*
 func (f *BasicFilesystem) Watch(name string, ignore Matcher, ctx context.Context, ignorePerms bool) (<-chan Event, <-chan error, error) {
 	return nil, nil, ErrWatchNotSupported
 }
+*/
