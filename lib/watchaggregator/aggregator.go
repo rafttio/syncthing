@@ -436,7 +436,7 @@ func (a *aggregator) CommitConfiguration(_, to config.Configuration) bool {
 }
 
 func (a *aggregator) updateConfig(folderCfg config.FolderConfiguration) {
-	a.notifyDelay = time.Duration(folderCfg.FSWatcherDelayS) * time.Second
+	a.notifyDelay = folderCfg.FSWatcherDelay()
 	a.notifyTimeout = notifyTimeout(folderCfg.FSWatcherDelayS)
 	a.folderCfg = folderCfg
 }
