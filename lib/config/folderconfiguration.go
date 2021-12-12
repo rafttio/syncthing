@@ -16,7 +16,6 @@ import (
 	"time"
 
 	"github.com/shirou/gopsutil/v3/disk"
-
 	"github.com/syncthing/syncthing/lib/build"
 	"github.com/syncthing/syncthing/lib/db"
 	"github.com/syncthing/syncthing/lib/fs"
@@ -180,6 +179,13 @@ func (f *FolderConfiguration) DeviceIDs() []protocol.DeviceID {
 	return deviceIDs
 }
 
+func (f *FolderConfiguration) FSWatcherDelay() time.Duration {
+	if f.FSWatcherDelayS >= 0 {
+		return f.FSWatcherDelay() * time.Second
+	}
+	return time.Second / (-f.FSWatcherDelay())
+}
+
 func (f *FolderConfiguration) prepare(myID protocol.DeviceID, existingDevices map[protocol.DeviceID]*DeviceConfiguration) {
 	// Ensure that
 	// - any loose devices are not present in the wrong places
@@ -199,13 +205,6 @@ func (f *FolderConfiguration) prepare(myID protocol.DeviceID, existingDevices ma
 		f.RescanIntervalS = MaxRescanIntervalS
 	} else if f.RescanIntervalS < 0 {
 		f.RescanIntervalS = 0
-	}
-
-	if f.FSWatcherDelayS <= 0 {
-		f.FSWatcherEnabled = false
-		f.FSWatcherDelayS = 10
-	} else if f.FSWatcherDelayS < 0.01 {
-		f.FSWatcherDelayS = 0.01
 	}
 
 	if f.Versioning.CleanupIntervalS > MaxRescanIntervalS {
