@@ -447,6 +447,7 @@ func (c *rawConnection) dispatcherLoop() (err error) {
 			}
 		}
 
+		l.Debugf("handling message: %T", msg)
 		switch msg := msg.(type) {
 		case *Index:
 			err = checkIndexConsistency(msg.Files)
@@ -488,6 +489,7 @@ func (c *rawConnection) dispatcherLoop() (err error) {
 
 func (c *rawConnection) readMessage(fourByteBuf []byte) (message, error) {
 	hdr, err := c.readHeader(fourByteBuf)
+	l.Debugf("Read header returned %#v err=%v", hdr, err)
 	if err != nil {
 		return nil, err
 	}
@@ -552,7 +554,6 @@ func (c *rawConnection) readMessageAfterHeader(hdr Header, fourByteBuf []byte) (
 
 func (c *rawConnection) readHeader(fourByteBuf []byte) (Header, error) {
 	// First comes a 2 byte header length
-
 	if _, err := io.ReadFull(c.cr, fourByteBuf[:2]); err != nil {
 		return Header{}, errors.Wrap(err, "reading length")
 	}

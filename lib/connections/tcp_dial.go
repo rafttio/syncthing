@@ -31,6 +31,7 @@ type tcpDialer struct {
 }
 
 func (d *tcpDialer) Dial(ctx context.Context, _ protocol.DeviceID, uri *url.URL) (internalConn, error) {
+	l.Debugln("Dial to uri", uri)
 	uri = fixupPort(uri, config.DefaultTCPPort)
 
 	timeoutCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
