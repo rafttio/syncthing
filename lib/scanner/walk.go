@@ -32,7 +32,7 @@ type Config struct {
 	// Limit walking to these paths within Dir, or no limit if Sub is empty
 	Subs []string
 	// If Matcher is not nil, it is used to identify files to ignore which were specified by the user.
-	Matcher *ignore.Matcher
+	Matcher ignore.Matcher
 	// Number of hours to keep temporary files for
 	TempLifetime time.Duration
 	// If CurrentFiler is not nil, it is queried for the current file before rescanning.

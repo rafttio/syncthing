@@ -127,7 +127,18 @@ type ChangeDetector interface {
 	Reset()
 }
 
-type Matcher struct {
+type Matcher interface {
+	Load(file string) error
+	Match(file string) Result
+	Hash() string
+	ShouldIgnore(filename string) bool
+	SkipIgnoredDirs() bool
+	Parse(r io.Reader, file string) error
+	Lines() []string
+	Patterns() []string
+}
+
+type matcher struct {
 	fs              fs.Filesystem
 	lines           []string  // exact lines read from .stignore
 	patterns        []Pattern // patterns including those from included files
@@ -141,11 +152,11 @@ type Matcher struct {
 }
 
 // An Option can be passed to New()
-type Option func(*Matcher)
+type Option func(*matcher)
 
 // WithCache enables or disables lookup caching. The default is disabled.
 func WithCache(v bool) Option {
-	return func(m *Matcher) {
+	return func(m *matcher) {
 		m.withCache = v
 	}
 }
@@ -153,13 +164,13 @@ func WithCache(v bool) Option {
 // WithChangeDetector sets a custom ChangeDetector. The default is to simply
 // use the on disk modtime for comparison.
 func WithChangeDetector(cd ChangeDetector) Option {
-	return func(m *Matcher) {
+	return func(m *matcher) {
 		m.changeDetector = cd
 	}
 }
 
-func New(fs fs.Filesystem, opts ...Option) *Matcher {
-	m := &Matcher{
+func New(fs fs.Filesystem, opts ...Option) *matcher {
+	m := &matcher{
 		fs:              fs,
 		stop:            make(chan struct{}),
 		mut:             sync.NewMutex(),
@@ -181,7 +192,7 @@ func New(fs fs.Filesystem, opts ...Option) *Matcher {
 // which case a file was loaded from disk but the patterns could not be
 // parsed. In this case the contents of the file are nonetheless available
 // in the Lines() method.
-func (m *Matcher) Load(file string) error {
+func (m *matcher) Load(file string) error {
 	m.mut.Lock()
 	defer m.mut.Unlock()
 
@@ -208,13 +219,13 @@ func (m *Matcher) Load(file string) error {
 }
 
 // Load and parse an io.Reader. See Load() for notes on the returned error.
-func (m *Matcher) Parse(r io.Reader, file string) error {
+func (m *matcher) Parse(r io.Reader, file string) error {
 	m.mut.Lock()
 	defer m.mut.Unlock()
 	return m.parseLocked(r, file)
 }
 
-func (m *Matcher) parseLocked(r io.Reader, file string) error {
+func (m *matcher) parseLocked(r io.Reader, file string) error {
 	lines, patterns, err := parseIgnoreFile(m.fs, r, file, m.changeDetector, make(map[string]struct{}))
 	// Error is saved and returned at the end. We process the patterns
 	// (possibly blank) anyway.
@@ -253,7 +264,7 @@ func (m *Matcher) parseLocked(r io.Reader, file string) error {
 	return err
 }
 
-func (m *Matcher) Match(file string) (result Result) {
+func (m *matcher) Match(file string) (result Result) {
 	if file == "." {
 		return resultNotMatched
 	}
@@ -301,14 +312,14 @@ func (m *Matcher) Match(file string) (result Result) {
 }
 
 // Lines return a list of the unprocessed lines in .stignore at last load
-func (m *Matcher) Lines() []string {
+func (m *matcher) Lines() []string {
 	m.mut.Lock()
 	defer m.mut.Unlock()
 	return m.lines
 }
 
 // Patterns return a list of the loaded patterns, as they've been parsed
-func (m *Matcher) Patterns() []string {
+func (m *matcher) Patterns() []string {
 	m.mut.Lock()
 	defer m.mut.Unlock()
 
@@ -319,21 +330,21 @@ func (m *Matcher) Patterns() []string {
 	return patterns
 }
 
-func (m *Matcher) String() string {
-	return fmt.Sprintf("Matcher/%v@%p", m.Patterns(), m)
+func (m *matcher) String() string {
+	return fmt.Sprintf("matcher/%v@%p", m.Patterns(), m)
 }
 
-func (m *Matcher) Hash() string {
+func (m *matcher) Hash() string {
 	m.mut.Lock()
 	defer m.mut.Unlock()
 	return m.curHash
 }
 
-func (m *Matcher) Stop() {
+func (m *matcher) Stop() {
 	close(m.stop)
 }
 
-func (m *Matcher) clean(d time.Duration) {
+func (m *matcher) clean(d time.Duration) {
 	t := time.NewTimer(d / 2)
 	for {
 		select {
@@ -351,7 +362,7 @@ func (m *Matcher) clean(d time.Duration) {
 }
 
 // ShouldIgnore returns true when a file is temporary, internal or ignored
-func (m *Matcher) ShouldIgnore(filename string) bool {
+func (m *matcher) ShouldIgnore(filename string) bool {
 	switch {
 	case fs.IsTemporary(filename):
 		return true
@@ -366,7 +377,7 @@ func (m *Matcher) ShouldIgnore(filename string) bool {
 	return false
 }
 
-func (m *Matcher) SkipIgnoredDirs() bool {
+func (m *matcher) SkipIgnoredDirs() bool {
 	m.mut.Lock()
 	defer m.mut.Unlock()
 	return m.skipIgnoredDirs

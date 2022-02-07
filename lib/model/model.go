@@ -146,7 +146,7 @@ type model struct {
 	folderCfgs                     map[string]config.FolderConfiguration                  // folder -> cfg
 	folderFiles                    map[string]*db.FileSet                                 // folder -> files
 	deviceStatRefs                 map[protocol.DeviceID]*stats.DeviceStatisticsReference // deviceID -> statsRef
-	folderIgnores                  map[string]*ignore.Matcher                             // folder -> matcher object
+	folderIgnores                  map[string]ignore.Matcher                              // folder -> matcher object
 	folderRunners                  map[string]service                                     // folder -> puller or scanner
 	folderRunnerToken              map[string]suture.ServiceToken                         // folder -> token for folder runner
 	folderRestartMuts              syncMutexMap                                           // folder -> restart mutex
@@ -170,7 +170,7 @@ type model struct {
 
 var _ config.Verifier = &model{}
 
-type folderFactory func(*model, *db.FileSet, *ignore.Matcher, config.FolderConfiguration, versioner.Versioner, events.Logger, *util.Semaphore) service
+type folderFactory func(*model, *db.FileSet, ignore.Matcher, config.FolderConfiguration, versioner.Versioner, events.Logger, *util.Semaphore) service
 
 var (
 	folderFactories = make(map[config.FolderType]folderFactory)
@@ -234,7 +234,7 @@ func NewModel(cfg config.Wrapper, id protocol.DeviceID, clientName, clientVersio
 		folderCfgs:                     make(map[string]config.FolderConfiguration),
 		folderFiles:                    make(map[string]*db.FileSet),
 		deviceStatRefs:                 make(map[protocol.DeviceID]*stats.DeviceStatisticsReference),
-		folderIgnores:                  make(map[string]*ignore.Matcher),
+		folderIgnores:                  make(map[string]ignore.Matcher),
 		folderRunners:                  make(map[string]service),
 		folderRunnerToken:              make(map[string]suture.ServiceToken),
 		folderVersioners:               make(map[string]versioner.Versioner),
@@ -345,7 +345,7 @@ func (m *model) addAndStartFolderLocked(cfg config.FolderConfiguration, fset *db
 }
 
 // Only needed for testing, use addAndStartFolderLocked instead.
-func (m *model) addAndStartFolderLockedWithIgnores(cfg config.FolderConfiguration, fset *db.FileSet, ignores *ignore.Matcher) {
+func (m *model) addAndStartFolderLockedWithIgnores(cfg config.FolderConfiguration, fset *db.FileSet, ignores ignore.Matcher) {
 	m.folderCfgs[cfg.ID] = cfg
 	m.folderFiles[cfg.ID] = fset
 	m.folderIgnores[cfg.ID] = ignores
@@ -424,7 +424,7 @@ func (m *model) addAndStartFolderLockedWithIgnores(cfg config.FolderConfiguratio
 	l.Infof("Ready to synchronize %s (%s)", cfg.Description(), cfg.Type)
 }
 
-func (m *model) warnAboutOverwritingProtectedFiles(cfg config.FolderConfiguration, ignores *ignore.Matcher) {
+func (m *model) warnAboutOverwritingProtectedFiles(cfg config.FolderConfiguration, ignores ignore.Matcher) {
 	if cfg.Type == config.FolderTypeSendOnly {
 		return
 	}

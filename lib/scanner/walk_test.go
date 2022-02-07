@@ -543,7 +543,7 @@ func TestWalkReceiveOnly(t *testing.T) {
 	}
 }
 
-func walkDir(fs fs.Filesystem, dir string, cfiler CurrentFiler, matcher *ignore.Matcher, localFlags uint32) []protocol.FileInfo {
+func walkDir(fs fs.Filesystem, dir string, cfiler CurrentFiler, matcher ignore.Matcher, localFlags uint32) []protocol.FileInfo {
 	cfg, cancel := testConfig()
 	defer cancel()
 	cfg.Filesystem = fs
