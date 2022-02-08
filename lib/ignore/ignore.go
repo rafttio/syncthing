@@ -133,7 +133,6 @@ type Matcher interface {
 	Hash() string
 	ShouldIgnore(filename string) bool
 	SkipIgnoredDirs() bool
-	Parse(r io.Reader, file string) error
 	Lines() []string
 	Patterns() []string
 }
