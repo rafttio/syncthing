@@ -57,7 +57,7 @@ type receiveOnlyFolder struct {
 	*sendReceiveFolder
 }
 
-func newReceiveOnlyFolder(model *model, fset *db.FileSet, ignores *ignore.Matcher, cfg config.FolderConfiguration, ver versioner.Versioner, evLogger events.Logger, ioLimiter *util.Semaphore) service {
+func newReceiveOnlyFolder(model *model, fset *db.FileSet, ignores ignore.Matcher, cfg config.FolderConfiguration, ver versioner.Versioner, evLogger events.Logger, ioLimiter *util.Semaphore) service {
 	sr := newSendReceiveFolder(model, fset, ignores, cfg, ver, evLogger, ioLimiter).(*sendReceiveFolder)
 	sr.localFlags = protocol.FlagLocalReceiveOnly // gets propagated to the scanner, and set on locally changed files
 	return &receiveOnlyFolder{sr}
@@ -178,7 +178,7 @@ type deleteQueue struct {
 		deleteItemOnDisk(item protocol.FileInfo, snap *db.Snapshot, scanChan chan<- string) error
 		deleteDirOnDisk(dir string, snap *db.Snapshot, scanChan chan<- string) error
 	}
-	ignores  *ignore.Matcher
+	ignores  ignore.Matcher
 	dirs     []string
 	scanChan chan<- string
 }

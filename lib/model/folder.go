@@ -45,7 +45,7 @@ type folder struct {
 	model         *model
 	shortID       protocol.ShortID
 	fset          *db.FileSet
-	ignores       *ignore.Matcher
+	ignores       ignore.Matcher
 	mtimefs       fs.Filesystem
 	modTimeWindow time.Duration
 	ctx           context.Context // used internally, only accessible on serve lifetime
@@ -92,7 +92,7 @@ type puller interface {
 	pull() (bool, error) // true when successful and should not be retried
 }
 
-func newFolder(model *model, fset *db.FileSet, ignores *ignore.Matcher, cfg config.FolderConfiguration, evLogger events.Logger, ioLimiter *util.Semaphore, ver versioner.Versioner) folder {
+func newFolder(model *model, fset *db.FileSet, ignores ignore.Matcher, cfg config.FolderConfiguration, evLogger events.Logger, ioLimiter *util.Semaphore, ver versioner.Versioner) folder {
 	f := folder{
 		stateTracker:              newStateTracker(cfg.ID, evLogger),
 		FolderConfiguration:       cfg,
