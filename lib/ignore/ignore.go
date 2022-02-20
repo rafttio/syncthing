@@ -26,10 +26,11 @@ import (
 )
 
 const (
-	resultNotMatched Result = 0
-	resultInclude    Result = 1 << iota
-	resultDeletable         = 1 << iota
-	resultFoldCase          = 1 << iota
+	resultNotMatched  Result = 0
+	resultInclude     Result = 1 << iota
+	resultDeletable          = 1 << iota
+	resultFoldCase           = 1 << iota
+	resultNoReinclude        = 1 << iota
 )
 
 var defaultResult Result = resultInclude
@@ -84,11 +85,14 @@ func (p Pattern) String() string {
 	if p.result&resultDeletable == resultDeletable {
 		ret = "(?d)" + ret
 	}
+	if p.result&resultNoReinclude == resultNoReinclude {
+		ret = "(?r)" + ret
+	}
 	return ret
 }
 
 func (p Pattern) allowsSkippingIgnoredDirs() bool {
-	if p.result.IsIgnored() {
+	if p.result.IsIgnored() || !p.result.IsReinclude() {
 		return true
 	}
 	if p.pattern[0] != '/' {
@@ -113,6 +117,11 @@ func (r Result) IsDeletable() bool {
 
 func (r Result) IsCaseFolded() bool {
 	return r&resultFoldCase == resultFoldCase
+}
+
+// TODO come up with a better name
+func (r Result) IsReinclude() bool {
+	return r&resultNoReinclude != resultNoReinclude
 }
 
 // The ChangeDetector is responsible for determining if files have changed
@@ -427,7 +436,7 @@ func parseLine(line string) ([]Pattern, error) {
 	}
 
 	// Allow prefixes to be specified in any order, but only once.
-	var seenPrefix [3]bool
+	var seenPrefix [4]bool
 
 	for {
 		if strings.HasPrefix(line, "!") && !seenPrefix[0] {
@@ -441,6 +450,10 @@ func parseLine(line string) ([]Pattern, error) {
 		} else if strings.HasPrefix(line, "(?d)") && !seenPrefix[2] {
 			seenPrefix[2] = true
 			pattern.result |= resultDeletable
+			line = line[4:]
+		} else if strings.HasPrefix(line, "(?r)") && !seenPrefix[3] {
+			seenPrefix[3] = true
+			pattern.result |= resultNoReinclude
 			line = line[4:]
 		} else {
 			break
