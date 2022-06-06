@@ -94,7 +94,7 @@ func (f *FolderConfiguration) CreateMarker() error {
 	if build.IsWindows {
 		// Windows has no umask so we must chose a safer set of bits to
 		// begin with.
-		permBits = 0700
+		permBits = 0o700
 	}
 	fs := f.Filesystem(nil)
 	err := fs.Mkdir(DefaultMarkerName, permBits)
@@ -149,7 +149,7 @@ func (f *FolderConfiguration) CreateRoot() (err error) {
 	if build.IsWindows {
 		// Windows has no umask so we must chose a safer set of bits to
 		// begin with.
-		permBits = 0700
+		permBits = 0o700
 	}
 
 	filesystem := f.Filesystem(nil)
@@ -177,10 +177,11 @@ func (f *FolderConfiguration) DeviceIDs() []protocol.DeviceID {
 }
 
 func (f *FolderConfiguration) FSWatcherDelay() time.Duration {
-	if f.FSWatcherDelayS >= 0 {
-		return f.FSWatcherDelay() * time.Second
+	if f.FSWatcherDelayS < 0 {
+		// HACK: to avoid changing the protobuf protocol, we instead parse negative values as microseconds
+		return time.Duration(-f.FSWatcherDelayS) * time.Microsecond
 	}
-	return time.Second / (-f.FSWatcherDelay())
+	return time.Second * time.Duration(f.FSWatcherDelayS)
 }
 
 func (f *FolderConfiguration) prepare(myID protocol.DeviceID, existingDevices map[protocol.DeviceID]bool) {
