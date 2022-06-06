@@ -181,10 +181,11 @@ func (f *FolderConfiguration) DeviceIDs() []protocol.DeviceID {
 }
 
 func (f *FolderConfiguration) FSWatcherDelay() time.Duration {
-	if f.FSWatcherDelayS >= 0 {
-		return f.FSWatcherDelay() * time.Second
+	if f.FSWatcherDelayS < 0 {
+		// HACK: to avoid changing the protobuf protocol, we instead parse negative values as microseconds
+		return time.Duration(-f.FSWatcherDelayS) * time.Microsecond
 	}
-	return time.Second / (-f.FSWatcherDelay())
+	return time.Second * time.Duration(f.FSWatcherDelayS)
 }
 
 func (f *FolderConfiguration) prepare(myID protocol.DeviceID, existingDevices map[protocol.DeviceID]bool) {
