@@ -83,11 +83,11 @@ func (f *FolderConfiguration) CreateMarker() error {
 		return nil
 	}
 
-	permBits := fs.FileMode(0777)
+	permBits := fs.FileMode(0o777)
 	if runtime.GOOS == "windows" {
 		// Windows has no umask so we must chose a safer set of bits to
 		// begin with.
-		permBits = 0700
+		permBits = 0o700
 	}
 	fs := f.Filesystem()
 	err := fs.Mkdir(DefaultMarkerName, permBits)
@@ -138,11 +138,11 @@ func (f *FolderConfiguration) CheckPath() error {
 func (f *FolderConfiguration) CreateRoot() (err error) {
 	// Directory permission bits. Will be filtered down to something
 	// sane by umask on Unixes.
-	permBits := fs.FileMode(0777)
+	permBits := fs.FileMode(0o777)
 	if runtime.GOOS == "windows" {
 		// Windows has no umask so we must chose a safer set of bits to
 		// begin with.
-		permBits = 0700
+		permBits = 0o700
 	}
 
 	filesystem := f.Filesystem()
@@ -170,10 +170,11 @@ func (f *FolderConfiguration) DeviceIDs() []protocol.DeviceID {
 }
 
 func (f *FolderConfiguration) FSWatcherDelay() time.Duration {
-	if f.FSWatcherDelayS >= 0 {
-		return f.FSWatcherDelay() * time.Second
+	if f.FSWatcherDelayS < 0 {
+		// HACK: to avoid changing the protobuf protocol, we instead parse negative values as microseconds
+		return time.Duration(-f.FSWatcherDelayS) * time.Microsecond
 	}
-	return time.Second / (-f.FSWatcherDelay())
+	return time.Second * time.Duration(f.FSWatcherDelayS)
 }
 
 func (f *FolderConfiguration) prepare(myID protocol.DeviceID, existingDevices map[protocol.DeviceID]bool) {
