@@ -26,11 +26,12 @@ import (
 )
 
 const (
-	resultNotMatched  Result = 0
-	resultInclude     Result = 1 << iota
-	resultDeletable          = 1 << iota
-	resultFoldCase           = 1 << iota
-	resultNoReinclude        = 1 << iota
+	resultNotMatched     Result = 0
+	resultInclude        Result = 1 << iota
+	resultDeletable             = 1 << iota
+	resultFoldCase              = 1 << iota
+	resultNoReinclude           = 1 << iota
+	resultFullyQualified        = 1 << iota
 )
 
 var defaultResult Result = resultInclude
@@ -124,6 +125,10 @@ func (r Result) IsReinclude() bool {
 	return r&resultNoReinclude != resultNoReinclude
 }
 
+func (r Result) IsFullyQualified() bool {
+	return r&resultFullyQualified == resultFullyQualified
+}
+
 // The ChangeDetector is responsible for determining if files have changed
 // on disk. It gets told to Remember() files (name and modtime) and will
 // then get asked if a file has been Seen() (i.e., Remember() has been
@@ -140,6 +145,7 @@ type Matcher struct {
 	fs              fs.Filesystem
 	lines           []string  // exact lines read from .stignore
 	patterns        []Pattern // patterns including those from included files
+	fqIncludes      []Pattern // fully-qualified include patterns
 	withCache       bool
 	matches         *cache
 	curHash         string
@@ -236,6 +242,13 @@ func (m *Matcher) parseLocked(r io.Reader, file string) error {
 		return err
 	}
 
+	var fqIncludes []Pattern
+	for _, p := range patterns {
+		if p.result.IsFullyQualified() && !p.result.IsIgnored() {
+			fqIncludes = append(fqIncludes, p)
+		}
+	}
+
 	m.skipIgnoredDirs = true
 	var previous string
 	for _, p := range patterns {
@@ -255,6 +268,8 @@ func (m *Matcher) parseLocked(r io.Reader, file string) error {
 
 	m.curHash = newHash
 	m.patterns = patterns
+	m.fqIncludes = fqIncludes
+
 	if m.withCache {
 		m.matches = newCache(patterns)
 	}
@@ -285,6 +300,15 @@ func (m *Matcher) Match(file string) (result Result) {
 		defer func() {
 			m.matches.set(file, result)
 		}()
+	}
+
+	// Check FQ include patterns
+	for _, pattern := range m.fqIncludes {
+		if file == pattern.pattern[1:] ||
+		strings.HasPrefix(pattern.pattern[1:], file+"/") ||
+		pattern.match.Match(file) {
+			return resultNotMatched // confusing, but this is the result for files that are not ignored
+		}
 	}
 
 	// Check all the patterns for a match.
@@ -436,7 +460,7 @@ func parseLine(line string) ([]Pattern, error) {
 	}
 
 	// Allow prefixes to be specified in any order, but only once.
-	var seenPrefix [4]bool
+	var seenPrefix [5]bool
 
 	for {
 		if strings.HasPrefix(line, "!") && !seenPrefix[0] {
@@ -454,6 +478,10 @@ func parseLine(line string) ([]Pattern, error) {
 		} else if strings.HasPrefix(line, "(?r)") && !seenPrefix[3] {
 			seenPrefix[3] = true
 			pattern.result |= resultNoReinclude
+			line = line[4:]
+		} else if strings.HasPrefix(line, "(?f)") && !seenPrefix[4] {
+			seenPrefix[4] = true
+			pattern.result |= resultFullyQualified
 			line = line[4:]
 		} else {
 			break
@@ -517,6 +545,7 @@ func parseIgnoreFile(fs fs.Filesystem, fd io.Reader, currentFile string, cd Chan
 
 	addPattern := func(line string) error {
 		newPatterns, err := parseLine(line)
+		
 		if err != nil {
 			return fmt.Errorf("invalid pattern %q in ignore file: %w", line, err)
 		}
