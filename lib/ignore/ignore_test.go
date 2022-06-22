@@ -1341,3 +1341,42 @@ func TestWindowsLineEndings(t *testing.T) {
 		t.Error("expected there to be a non-zero number of Windows line endings")
 	}
 }
+
+
+func TestFQIncludes(t *testing.T) {
+	stignore := `
+/foo/
+!(?f)/foo/bar.txt
+!(?f)/foo/important
+!(?f)/foo/bla/bazz/meow.bin
+`
+
+	pats := New(fs.NewFilesystem(fs.FilesystemTypeBasic, "."), WithCache(true))
+	err := pats.Parse(bytes.NewBufferString(stignore), ".stignore")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cases :=[] struct { path string; ignore bool } {
+		{"test.txt", false},
+		{"foo", false},
+		{"foo/bar", true},
+		{"foo/bar/bla", true},
+		{"foo/bar.txt", false},
+		{"foo/ignored.txt", true},
+		{"foo/bla", false},
+		{"foo/important", false},
+		{"foo/important.not", true},
+		{"foo/important/also-important", false},
+		{"foo/important/banana", false},
+		{"foo/bla/bazz", false},
+		{"foo/bla/bloo", true},
+	}
+
+	for _, c := range cases {
+		ignore := pats.ShouldIgnore(c.path)
+		if ignore != c.ignore {
+			t.Errorf("ShouldIgnore(%q) = %v, expected %v", c.path, ignore, c.ignore)
+		}
+	}
+}
