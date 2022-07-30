@@ -673,6 +673,12 @@ func (s *service) resolveDialTargets(ctx context.Context, now time.Time, cfg con
 
 		nextDialAt.set(deviceID, addr, now.Add(dialer.RedialFrequency()))
 
+		// For LAN addresses, increase the priority so that we
+		// try these first.
+		if s.lanChecker.isLANHost(uri.Host) && s.cfg.Options().LocalConnectionPriority != 0 {
+			priority = s.cfg.Options().LocalConnectionPriority
+		}
+
 		dialTargets = append(dialTargets, dialTarget{
 			addr:     addr,
 			dialer:   dialer,

@@ -76,6 +76,9 @@ message OptionsConfiguration {
     int32 connection_priority_quic_wan          = 57 [(ext.default) = "40", (ext.goname) = "ConnectionPriorityQUICWAN"];
     int32 connection_priority_relay             = 58 [(ext.default) = "50"];
     int32 connection_priority_upgrade_threshold = 59 [(ext.default) = "0"];
+    // Disable the local connection priority bump. Used for when tunneling to the remote device through a local tcp
+    // tunnel (e.g. ssh port forwarding)
+    int32 local_connection_priority = 60;
 
     // Legacy deprecated
     bool            upnp_enabled           = 9000 [deprecated = true, (ext.goname) = "DeprecatedUPnPEnabled"];
