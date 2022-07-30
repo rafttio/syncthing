@@ -83,6 +83,9 @@ type OptionsConfiguration struct {
 	// When set, this allows TLS 1.2 on sync connections, where we otherwise
 	// default to TLS 1.3+ only.
 	InsecureAllowOldTLSVersions bool `protobuf:"varint,53,opt,name=insecure_allow_old_tls_versions,json=insecureAllowOldTlsVersions,proto3" json:"insecureAllowOldTLSVersions" xml:"insecureAllowOldTLSVersions"`
+	// Disable the local connection priority bump. Used for when tunneling to the remote device through a local tcp
+	// tunnel (e.g. ssh port forwarding)
+	LocalConnectionPriority int `protobuf:"varint,54,opt,name=local_connection_priority,json=localConnectionPriority,proto3,casttype=int" json:"localConnectionPriority" xml:"localConnectionPriority"`
 	// Legacy deprecated
 	DeprecatedUPnPEnabled        bool     `protobuf:"varint,9000,opt,name=upnp_enabled,json=upnpEnabled,proto3" json:"-" xml:"upnpEnabled,omitempty"`                                    // Deprecated: Do not use.
 	DeprecatedUPnPLeaseM         int      `protobuf:"varint,9001,opt,name=upnp_lease_m,json=upnpLeaseM,proto3,casttype=int" json:"-" xml:"upnpLeaseMinutes,omitempty"`                   // Deprecated: Do not use.
@@ -434,6 +437,13 @@ func (m *OptionsConfiguration) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 		dAtA[i] = 0xb2
 		i--
 		dAtA[i] = 0xc0
+	}
+	if m.LocalConnectionPriority != 0 {
+		i = encodeVarintOptionsconfiguration(dAtA, i, uint64(m.LocalConnectionPriority))
+		i--
+		dAtA[i] = 0x3
+		i--
+		dAtA[i] = 0xb0
 	}
 	if m.InsecureAllowOldTLSVersions {
 		i--
@@ -1075,6 +1085,9 @@ func (m *OptionsConfiguration) ProtoSize() (n int) {
 	}
 	if m.InsecureAllowOldTLSVersions {
 		n += 3
+	}
+	if m.LocalConnectionPriority != 0 {
+		n += 2 + sovOptionsconfiguration(uint64(m.LocalConnectionPriority))
 	}
 	if m.DeprecatedUPnPEnabled {
 		n += 4
@@ -2292,6 +2305,25 @@ func (m *OptionsConfiguration) Unmarshal(dAtA []byte) error {
 				}
 			}
 			m.InsecureAllowOldTLSVersions = bool(v != 0)
+		case 54:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field LocalConnectionPriority", wireType)
+			}
+			m.LocalConnectionPriority = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowOptionsconfiguration
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.LocalConnectionPriority |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
 		case 9000:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field DeprecatedUPnPEnabled", wireType)
