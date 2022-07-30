@@ -672,7 +672,11 @@ func (s *service) resolveDialTargets(ctx context.Context, now time.Time, cfg con
 		case dialerFactory.AlwaysWAN():
 			// Do nothing.
 		case s.isLANHost(uri.Host):
-			priority--
+			if s.cfg.Options().LocalConnectionPriority != 0 {
+				priority = s.cfg.Options().LocalConnectionPriority
+			} else {
+				priority--
+			}
 		}
 
 		dialTargets = append(dialTargets, dialTarget{
