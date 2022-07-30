@@ -71,6 +71,10 @@ message OptionsConfiguration {
     // default to TLS 1.3+ only.
     bool insecure_allow_old_tls_versions = 53 [(ext.goname)= "InsecureAllowOldTLSVersions", (ext.xml) = "insecureAllowOldTLSVersions", (ext.json) = "insecureAllowOldTLSVersions"];
 
+    // Disable the local connection priority bump. Used for when tunneling to the remote device through a local tcp
+    // tunnel (e.g. ssh port forwarding)
+    int32 local_connection_priority = 54;
+
     // Legacy deprecated
     bool            upnp_enabled           = 9000 [deprecated = true, (ext.goname) = "DeprecatedUPnPEnabled"];
     int32           upnp_lease_m           = 9001 [deprecated = true, (ext.goname) = "DeprecatedUPnPLeaseM", (ext.xml) = "upnpLeaseMinutes,omitempty"];
