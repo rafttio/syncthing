@@ -305,8 +305,8 @@ func (m *Matcher) Match(file string) (result Result) {
 	// Check FQ include patterns
 	for _, pattern := range m.fqIncludes {
 		if file == pattern.pattern[1:] ||
-		strings.HasPrefix(pattern.pattern[1:], file+"/") ||
-		pattern.match.Match(file) {
+			strings.HasPrefix(pattern.pattern[1:], file+"/") ||
+			pattern.match.Match(file) {
 			return resultNotMatched // confusing, but this is the result for files that are not ignored
 		}
 	}
@@ -545,7 +545,6 @@ func parseIgnoreFile(fs fs.Filesystem, fd io.Reader, currentFile string, cd Chan
 
 	addPattern := func(line string) error {
 		newPatterns, err := parseLine(line)
-		
 		if err != nil {
 			return fmt.Errorf("invalid pattern %q in ignore file: %w", line, err)
 		}
